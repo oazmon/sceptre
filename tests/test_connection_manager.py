@@ -8,6 +8,7 @@ from sceptre.exceptions import RetryLimitExceededError
 from boto3.session import Session
 import botocore
 from botocore.exceptions import ClientError
+from datetime import datetime
 
 
 class TestConnectionManager(object):
@@ -80,7 +81,8 @@ class TestConnectionManager(object):
             "Credentials": {
                 "AccessKeyId": "id",
                 "SecretAccessKey": "key",
-                "SessionToken": "token"
+                "SessionToken": "token",
+                "Expiration": datetime(2020, 1, 1)
             }
         }
         mock_sts_client = Mock()
