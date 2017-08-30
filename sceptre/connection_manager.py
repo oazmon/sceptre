@@ -13,7 +13,7 @@ import threading
 import time
 from datetime import datetime
 from datetime import timedelta
-import pytz
+from dateutil import tz
 
 import boto3
 from botocore.exceptions import ClientError
@@ -82,7 +82,7 @@ class ConnectionManager(object):
         self.iam_role = iam_role
         self._boto_session = None
         self._boto_session_expiration = \
-            datetime.now(pytz.utc) - timedelta(days=9)
+            datetime.now(tz.tzutc()) - timedelta(days=9)
 
         self.clients = {}
 
@@ -200,7 +200,7 @@ class ConnectionManager(object):
 
         if (
             self.iam_role and
-            self._boto_session_expiration >= datetime.now(pytz.utc)
+            self._boto_session_expiration >= datetime.now(tz.tzutc())
            ):
             self.logger.debug(
                 "Boto session has expired"
