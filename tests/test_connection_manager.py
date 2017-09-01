@@ -129,6 +129,16 @@ class TestConnectionManager(object):
         client_2 = self.connection_manager._get_client(service)
         assert client_1 == client_2
 
+    @patch("sceptre.connection_manager.boto3.session.Session.get_credentials")
+    def test_get_client_with_exisiting_client_and_iam_role_none(
+            self, mock_get_credentials
+    ):
+        service = "cloudformation"
+        self.connection_manager._iam_role = None
+        client_1 = self.connection_manager._get_client(service)
+        client_2 = self.connection_manager._get_client(service)
+        assert client_1 == client_2
+
     @mock_s3
     def test_call_with_valid_service_and_call(self):
         service = 's3'

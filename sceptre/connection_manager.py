@@ -12,7 +12,6 @@ import logging
 import threading
 import time
 from datetime import datetime
-from datetime import timedelta
 from dateutil import tz
 
 import boto3
@@ -81,8 +80,7 @@ class ConnectionManager(object):
         self.region = region
         self.iam_role = iam_role
         self._boto_session = None
-        self._boto_session_expiration = \
-            datetime.now(tz.tzutc()) - timedelta(days=9)
+        self._boto_session_expiration = None
 
         self.clients = {}
 
@@ -198,13 +196,14 @@ class ConnectionManager(object):
         :rtype: boolean
         """
 
-        if (
-            self.iam_role and
-            self._boto_session_expiration >= datetime.now(tz.tzutc())
-           ):
-            self.logger.debug(
-                "Boto session has expired"
-            )
+        if(self._boto_session_expiration is None):
+            expired = True
+        else:
+            expired = self._boto_session_expiration >= datetime.now(tz.tzutc())
+
+        if (self.iam_role and expired):
+            self.logger.debug("Boto session has expired")
+
             return True
         else:
             return False
