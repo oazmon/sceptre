@@ -157,9 +157,37 @@ class Stack(object):
                 self.config["template_path"],
             )
 
+            s3_details = None
+            if "template_bucket_name" in self.environment_config:
+                template_key = "/".join([
+                    self.region, self._environment_path,
+                    "{stack_name}-{time_stamp}.json".format(
+                        stack_name=self.external_name,
+                        time_stamp=datetime.datetime.utcnow().strftime(
+                            "%Y-%m-%d-%H-%M-%S-%fZ"
+                        )
+                    )
+                ])
+
+                if "template_key_prefix" in self.environment_config:
+                    prefix = self.environment_config["template_key_prefix"]
+                    template_key = "/".join([
+                        prefix.strip("/"), template_key
+                    ])
+
+                s3_details = {
+                     "bucket_name": self.environment_config[
+                        "template_bucket_name"
+                     ],
+                     "bucket_key": template_key,
+                     "region": self.region
+                }
+
             self._template = Template(
                 path=abs_template_path,
-                sceptre_user_data=self.sceptre_user_data
+                sceptre_user_data=self.sceptre_user_data,
+                s3_details=s3_details,
+                connection_manager=self.connection_manager
             )
         return self._template
 
@@ -198,7 +226,7 @@ class Stack(object):
                 for k, v in self.config.get("stack_tags", {}).items()
             ]
         }
-        create_stack_kwargs.update(self._get_template_details())
+        create_stack_kwargs.update(self.template.get_boto_call_parameter())
         create_stack_kwargs.update(self._get_role_arn())
         response = self.connection_manager.call(
             service="cloudformation",
@@ -232,7 +260,7 @@ class Stack(object):
                 for k, v in self.config.get("stack_tags", {}).items()
             ]
         }
-        update_stack_kwargs.update(self._get_template_details())
+        update_stack_kwargs.update(self.template.get_boto_call_parameter())
         update_stack_kwargs.update(self._get_role_arn())
         response = self.connection_manager.call(
             service="cloudformation",
@@ -486,27 +514,6 @@ class Stack(object):
 
         return response
 
-    def validate_template(self):
-        """
-        Validates the stack's CloudFormation template.
-
-        Raises an error if the template is invalid.
-
-        :returns: Information about the template.
-        :rtype: dict
-        :raises: botocore.exceptions.ClientError
-        """
-        self.logger.debug("%s - Validating template", self.name)
-        response = self.connection_manager.call(
-            service="cloudformation",
-            command="validate_template",
-            kwargs=self._get_template_details()
-        )
-        self.logger.debug(
-            "%s - Validate template response: %s", self.name, response
-        )
-        return response
-
     def create_change_set(self, change_set_name):
         """
         Creates a change set with the name ``change_set_name``.
@@ -524,7 +531,9 @@ class Stack(object):
                 for k, v in self.config.get("stack_tags", {}).items()
             ]
         }
-        create_change_set_kwargs.update(self._get_template_details())
+        create_change_set_kwargs.update(
+            self.template.get_boto_call_parameter()
+        )
         create_change_set_kwargs.update(self._get_role_arn())
         self.logger.debug(
             "%s - Creating change set '%s'", self.name, change_set_name
@@ -664,29 +673,6 @@ class Stack(object):
             })
 
         return formatted_parameters
-
-    def _get_template_details(self):
-        """
-        Returns the CloudFormation template location.
-
-        Uploads the template to S3 and returns the object's URL, or returns
-        the template itself.
-
-        :returns: The location of the template.
-        :rtype: dict
-        """
-        if "template_bucket_name" in self.environment_config:
-            template_url = self.template.upload_to_s3(
-                self.region,
-                self.environment_config["template_bucket_name"],
-                self.environment_config.get("template_key_prefix", ""),
-                self._environment_path,
-                self.external_name,
-                self.connection_manager
-            )
-            return {"TemplateURL": template_url}
-        else:
-            return {"TemplateBody": self.template.body}
 
     def _get_role_arn(self):
         """

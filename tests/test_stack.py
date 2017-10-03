@@ -159,7 +159,9 @@ environment_config={'key': 'val'}, connection_manager=connection_manager)"
 
         mock_Template.assert_called_once_with(
             path="sceptre_dir/template_path",
-            sceptre_user_data=sentinel.sceptre_user_data
+            sceptre_user_data=sentinel.sceptre_user_data,
+            s3_details=None,
+            connection_manager=self.stack.connection_manager
         )
         assert response == sentinel.template
 
@@ -189,13 +191,12 @@ environment_config={'key': 'val'}, connection_manager=connection_manager)"
 
     @patch("sceptre.stack.Stack._format_parameters")
     @patch("sceptre.stack.Stack._wait_for_completion")
-    @patch("sceptre.stack.Stack._get_template_details")
     def test_create_sends_correct_request(
-        self, mock_get_template_details,
-        mock_wait_for_completion, mock_format_params
+        self, mock_wait_for_completion, mock_format_params
     ):
         mock_format_params.return_value = sentinel.parameters
-        mock_get_template_details.return_value = {
+        self.stack._template = Mock(spec=Template)
+        self.stack._template.get_boto_call_parameter.return_value = {
             "Template": sentinel.template
         }
         self.stack.environment_config = {
@@ -227,13 +228,12 @@ environment_config={'key': 'val'}, connection_manager=connection_manager)"
 
     @patch("sceptre.stack.Stack._format_parameters")
     @patch("sceptre.stack.Stack._wait_for_completion")
-    @patch("sceptre.stack.Stack._get_template_details")
     def test_update_sends_correct_request(
-        self, mock_get_template_details,
-        mock_wait_for_completion, mock_format_params
+        self, mock_wait_for_completion, mock_format_params
     ):
         mock_format_params.return_value = sentinel.parameters
-        mock_get_template_details.return_value = {
+        self.stack._template = Mock(spec=Template)
+        self.stack._template.get_boto_call_parameter.return_value = {
             "Template": sentinel.template
         }
         self.stack.environment_config = {
@@ -563,30 +563,11 @@ environment_config={'key': 'val'}, connection_manager=connection_manager)"
             }
         )
 
-    @patch("sceptre.stack.Stack._get_template_details")
-    def test_validate_template_sends_correct_request(
-        self, mock_get_template_details
-    ):
-        mock_get_template_details.return_value = {
-            "Template": sentinel.template
-        }
-        self.stack.environment_config = {
-            "template_bucket_name": sentinel.template_bucket_name
-        }
-        self.stack.validate_template()
-        self.stack.connection_manager.call.assert_called_with(
-            service="cloudformation",
-            command="validate_template",
-            kwargs={"Template": sentinel.template}
-        )
-
     @patch("sceptre.stack.Stack._format_parameters")
-    @patch("sceptre.stack.Stack._get_template_details")
-    def test_create_change_set_sends_correct_request(
-        self, mock_get_template_details, mock_format_params
-    ):
+    def test_create_change_set_sends_correct_request(self, mock_format_params):
         mock_format_params.return_value = sentinel.parameters
-        mock_get_template_details.return_value = {
+        self.stack._template = Mock(spec=Template)
+        self.stack._template.get_boto_call_parameter.return_value = {
             "Template": sentinel.template
         }
         self.stack.environment_config = {
@@ -802,38 +783,6 @@ environment_config={'key': 'val'}, connection_manager=connection_manager)"
         )
         with pytest.raises(ClientError):
             self.stack.get_status()
-
-    def test_get_template_details_with_upload(self):
-        self.stack._template = Mock(spec=Template)
-        self.stack._template.upload_to_s3.return_value = sentinel.template_url
-        self.stack.environment_config = {
-            "template_bucket_name": sentinel.template_bucket_name,
-            "template_key_prefix": sentinel.template_key_prefix
-        }
-
-        template_details = self.stack._get_template_details()
-
-        self.stack._template.upload_to_s3.assert_called_once_with(
-            self.stack.region,
-            sentinel.template_bucket_name,
-            sentinel.template_key_prefix,
-            self.stack._environment_path,
-            sentinel.external_name,
-            self.stack.connection_manager
-        )
-
-        assert template_details == {"TemplateURL": sentinel.template_url}
-
-    def test_get_template_details_without_upload(self):
-        self.stack._template = Mock(spec=Template)
-        self.stack._template.body = sentinel.body
-        self.stack.environment_config = {
-            "template_key_prefix": sentinel.template_key_prefix
-        }
-
-        template_details = self.stack._get_template_details()
-
-        assert template_details == {"TemplateBody": sentinel.body}
 
     def test_get_role_arn_without_role(self):
         self.stack._template = Mock(spec=Template)
