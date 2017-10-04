@@ -17,14 +17,12 @@ import threading
 from dateutil.tz import tzutc
 import botocore
 
-from .config import Config
 from .resolvers import ResolvableProperty
 from .stack_status import StackStatus
 from .stack_status import StackChangeSetStatus
 from .template import Template
 
 from .hooks import add_stack_hooks
-from .helpers import get_name_tuple
 from .helpers import get_external_stack_name
 
 from .exceptions import CannotUpdateFailedStackError
@@ -43,8 +41,8 @@ class Stack(object):
 
     :param name: The name of the stack.
     :type project: str
-    :param environment_config: The stack's environment's config.
-    :type environment_config: sceptre.config.Config
+    :param config: The stack's config.
+    :type config: sceptre.config.Config
     :param connection_manager: A connection manager, used to make Boto3 calls.
     :type connection_manager: sceptre.connection_manager.ConnectionManager
     """
@@ -53,19 +51,14 @@ class Stack(object):
     parameters = ResolvableProperty("parameters")
     sceptre_user_data = ResolvableProperty("sceptre_user_data")
 
-    def __init__(self, name, environment_config, connection_manager):
+    def __init__(self, name, config, connection_manager):
         self.logger = logging.getLogger(__name__)
 
         self.name = name
-        self.environment_config = environment_config
-
-        self._environment_path = self.environment_config.environment_path
-        self.project = self.environment_config["project_code"]
-        self.region = self.environment_config["region"]
+        self.config = config
 
         self.connection_manager = connection_manager
 
-        self._config = None
         self._template = None
         self._hooks = None
         self._dependencies = None
@@ -73,34 +66,11 @@ class Stack(object):
 
     def __repr__(self):
         return (
-            "sceptre.stack.Stack(stack_name='{0}', environment_config={1}, "
+            "sceptre.stack.Stack(stack_name='{0}', config={1}, "
             "connection_manager={2})".format(
-                self.name, self.environment_config, self.connection_manager
+                self.name, self.config, self.connection_manager
             )
         )
-
-    @property
-    def config(self):
-        """
-        Return's the stack's config.
-
-        :returns: The stack's config.
-        :rtype: sceptre.config.Config
-        """
-        if self._config is None:
-            with self._config_lock:
-                self._config = Config.with_yaml_constructors(
-                    sceptre_dir=self.environment_config.sceptre_dir,
-                    environment_path=self.environment_config.environment_path,
-                    base_file_name=get_name_tuple(self.name)[-1],
-                    environment_config=self.environment_config,
-                    connection_manager=self.connection_manager
-                )
-                self._config.read(
-                    self.environment_config.get("user_variables")
-                )
-
-        return self._config
 
     @property
     def dependencies(self):
@@ -153,34 +123,31 @@ class Stack(object):
         """
         if self._template is None:
             abs_template_path = os.path.join(
-                self.environment_config.sceptre_dir,
+                self.config.sceptre_dir,
                 self.config["template_path"],
             )
 
             s3_details = None
-            if "template_bucket_name" in self.environment_config:
+            if "template_bucket_name" in self.config:
                 template_key = "/".join([
-                    self.region, self._environment_path,
-                    "{stack_name}-{time_stamp}.json".format(
-                        stack_name=self.external_name,
+                    self.config["project_code"], self.config["region"],
+                    self.name, "{time_stamp}.json".format(
                         time_stamp=datetime.datetime.utcnow().strftime(
                             "%Y-%m-%d-%H-%M-%S-%fZ"
                         )
                     )
                 ])
 
-                if "template_key_prefix" in self.environment_config:
-                    prefix = self.environment_config["template_key_prefix"]
-                    template_key = "/".join([
-                        prefix.strip("/"), template_key
-                    ])
+                if "template_key_prefix" in self.config:
+                    prefix = self.config["template_key_prefix"]
+                    template_key = "/".join([prefix.strip("/"), template_key])
 
                 s3_details = {
-                     "bucket_name": self.environment_config[
+                     "bucket_name": self.config[
                         "template_bucket_name"
                      ],
                      "bucket_key": template_key,
-                     "region": self.region
+                     "region": self.config["region"]
                 }
 
             self._template = Template(
@@ -203,7 +170,7 @@ class Stack(object):
         if self._external_name is None:
             self._external_name = self.config.get(
                 "stack_name",
-                get_external_stack_name(self.project, self.name)
+                get_external_stack_name(self.config["project_code"], self.name)
             )
         return self._external_name
 

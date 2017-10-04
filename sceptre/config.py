@@ -77,7 +77,7 @@ class Config(dict):
         self.sceptre_dir = sceptre_dir
         self.environment_path = environment_path
         self.name = base_file_name
-        self["dependencies"] = []
+        # self["dependencies"] = []
 
         self._check_env_path_exists(os.path.join(
             self.sceptre_dir, "config", self.environment_path
@@ -111,12 +111,9 @@ class Config(dict):
         :type connection_manager: sceptre.connection_manager.ConnectionManager
         """
         obj = cls(sceptre_dir, environment_path, base_file_name)
-        obj._add_yaml_constructors(
-            "sceptre.resolvers", connection_manager, environment_config
-        )
-        obj._add_yaml_constructors(
-            "sceptre.hooks", connection_manager, environment_config
-        )
+        obj.update(environment_config)
+        obj._add_yaml_constructors("sceptre.resolvers", connection_manager)
+        obj._add_yaml_constructors("sceptre.hooks", connection_manager)
         return obj
 
     def __getitem__(self, item):
@@ -227,16 +224,14 @@ class Config(dict):
                     )
                 )
 
-    def _add_yaml_constructors(
-        self, entry_point_name, connection_manager, environment_config
-    ):
+    def _add_yaml_constructors(self, entry_point_name, connection_manager):
         """
         Adds PyYAML constructors for all classes found registered at the
         entry_point_name.
 
         :param entry_point_name: The name of the entry point.
         :type entry_point_name: str
-        :param environment_config: A environment config.
+        :param environment_config: The environment config.
         :type environment_config: Config
         :param connection_manager: A connection manager.
         :type connection_manager: ConnectionManager
@@ -254,10 +249,7 @@ class Config(dict):
             :rtype: func
             """
             return lambda loader, node: node_class(
-                loader.construct_scalar(node),
-                connection_manager,
-                environment_config,
-                self
+                loader.construct_scalar(node), connection_manager, self
             )  # pragma: no cover
 
         for entry_point in pkg_resources.iter_entry_points(entry_point_name):

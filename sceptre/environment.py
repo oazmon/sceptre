@@ -392,17 +392,25 @@ class Environment(object):
         :returns: A dictionary of the stacks, keyed by the stack's name
         :rtype: dict
         """
-        config = self._get_config()
+        environment_config = self._get_config()
         connection_manager = ConnectionManager(
-            region=config["region"],
-            iam_role=config.get("iam_role")
+            region=environment_config["region"],
+            iam_role=environment_config.get("iam_role")
         )
         stacks = {}
         for stack_name in self._get_available_stacks():
             self.logger.debug("Initialising stack '%s'", stack_name)
+
+            stack_config = Config.with_yaml_constructors(
+                sceptre_dir=self.sceptre_dir,
+                environment_path=self.path,
+                base_file_name=get_name_tuple(stack_name)[-1],
+                environment_config=environment_config,
+                connection_manager=connection_manager
+            )
+            stack_config.read(environment_config.get("user_variables"))
             stack = Stack(
-                name=stack_name,
-                environment_config=config,
+                name=stack_name, config=stack_config,
                 connection_manager=connection_manager
             )
             stacks[get_name_tuple(stack_name)[-1]] = stack

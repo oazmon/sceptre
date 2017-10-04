@@ -10,10 +10,8 @@ class Resolver(object):
     manager are supplied to the class, as they may be of use to inheriting
     classes.
 
-    :param environment_config: The environment_config from config.yaml files.
-    :type environment_config: sceptre.config.Config
-    :param stack_config: The stack config.
-    :type stack_config: sceptre.config.Config
+    :param config: The config.
+    :type config: sceptre.config.Config
     :param connection_manager: A connection manager.
     :type connection_manager: sceptre.connection_manager.ConnectionManager
     :param argument: Arguments to pass to the resolver.
@@ -22,13 +20,9 @@ class Resolver(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(
-        self, argument=None, connection_manager=None,
-        environment_config=None, stack_config=None
-    ):
+    def __init__(self, argument=None, connection_manager=None, config=None):
         self.logger = logging.getLogger(__name__)
-        self.environment_config = environment_config
-        self.stack_config = stack_config
+        self.config = config
         self.connection_manager = connection_manager
         self.argument = argument
 

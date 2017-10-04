@@ -95,12 +95,13 @@ class StackOutput(StackOutputBase):
         self.dependency_stack_name, self.output_key = self.argument.split("::")
         if "/" not in self.dependency_stack_name:
             self.dependency_stack_name = "/".join([
-                self.stack_config.environment_path,
+                self.config.environment_path,
                 self.dependency_stack_name
             ])
-        self.stack_config["dependencies"].append(
-            self.dependency_stack_name
-        )
+
+        if "dependencies" not in self.config:
+            self.config["dependencies"] = []
+        self.config["dependencies"].append(self.dependency_stack_name)
 
     def resolve(self):
         """
@@ -112,7 +113,7 @@ class StackOutput(StackOutputBase):
         self.logger.debug("Resolving stack output: {0}".format(self.argument))
 
         stack_name = "-".join([
-            self.environment_config["project_code"],
+            self.config["project_code"],
             self.dependency_stack_name.replace("/", "-")
         ])
 
