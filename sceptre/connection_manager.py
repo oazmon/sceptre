@@ -108,9 +108,6 @@ class ConnectionManager(object):
         with self._session_lock:
             self.logger.debug("Getting Boto3 session")
 
-            if self._is_session_expired():
-                self._boto_session = None
-
             if self._boto_session is None:
                 self.logger.debug("No Boto3 session found, creating one...")
                 if self.iam_role:
@@ -177,8 +174,7 @@ class ConnectionManager(object):
         :rtype: boto3.client.Client
         """
         with self._client_lock:
-            if self._is_session_expired():
-                self.clients[service] = None
+            self._check_session_expiration()
 
             if self.clients.get(service) is None:
                 self.logger.debug(
@@ -187,7 +183,7 @@ class ConnectionManager(object):
                 self.clients[service] = self.boto_session.client(service)
             return self.clients[service]
 
-    def _is_session_expired(self):
+    def _check_session_expiration(self):
         """
         Validates the boto session to make sure it is still valid and returns
         false if it has expired
@@ -195,18 +191,13 @@ class ConnectionManager(object):
         :returns: session expired boolean
         :rtype: boolean
         """
+        expiration = self._boto_session_expiration
 
-        if(self._boto_session_expiration is None):
-            expired = True
-        else:
-            expired = self._boto_session_expiration >= datetime.now(tz.tzutc())
+        expired = not (expiration and expiration >= datetime.now(tz.tzutc()))
 
-        if (self.iam_role and expired):
-            self.logger.debug("Boto session has expired")
-
-            return True
-        else:
-            return False
+        if self.iam_role and expired:
+            self.clients = {}
+            self._boto_session = None
 
     @_retry_boto_call
     def call(self, service, command, kwargs=None):
