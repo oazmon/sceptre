@@ -191,13 +191,11 @@ class ConnectionManager(object):
         :returns: session expired boolean
         :rtype: boolean
         """
-        expiration = self._boto_session_expiration
-
-        expired = not (expiration and expiration >= datetime.now(tz.tzutc()))
-
-        if self.iam_role and expired:
-            self.clients = {}
-            self._boto_session = None
+        if self.iam_role and self._boto_session_expiration:
+            if self._boto_session_expiration >= datetime.now(tz.tzutc()):
+                self.logger.info("Boto session has expired")
+                self.clients = {}
+                self._boto_session = None
 
     @_retry_boto_call
     def call(self, service, command, kwargs=None):
