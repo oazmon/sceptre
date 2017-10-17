@@ -1,6 +1,7 @@
 import abc
 import logging
 from functools import wraps
+from botocore.exceptions import ClientError
 
 
 class Hook(object):
@@ -40,7 +41,7 @@ class Hook(object):
         pass  # pragma: no cover
 
 
-def execute_hooks(hooks):
+def execute_hooks(hooks, run_type="success"):
     """
     Searches through dictionary or list for Resolver objects and replaces
     them with the resolved value. Supports nested dictionaries and lists.
@@ -53,7 +54,11 @@ def execute_hooks(hooks):
     """
     if isinstance(hooks, list):
         for hook in hooks:
-            if isinstance(hook, Hook):
+            if isinstance(hook, dict):
+                if hook["run"] == run_type:
+                    hook["command"].run()
+
+            elif isinstance(hook, Hook) and run_type == "success":
                 hook.run()
 
 
@@ -66,9 +71,18 @@ def add_stack_hooks(func):
     """
     @wraps(func)
     def decorated(self, *args, **kwargs):
-        execute_hooks(self.hooks.get("before_" + func.__name__))
-        response = func(self, *args, **kwargs)
-        execute_hooks(self.hooks.get("after_" + func.__name__))
+        execute_hooks(self.hooks.get("before_" + func.__name__), "success")
+        try:
+            response = func(self, *args, **kwargs)
+        except ClientError as e:
+            execute_hooks(self.hooks.get("after_" + func.__name__), "no_update") 
+            # Interestingly enough, this makes the finally block run and then
+            # raise e AFTER the finally.
+            raise e
+        finally:
+            execute_hooks(self.hooks.get("after_" + func.__name__), "always")
+        execute_hooks(self.hooks.get("after_" + func.__name__), "success")
+        
 
         return response
 
