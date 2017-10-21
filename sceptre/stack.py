@@ -97,7 +97,8 @@ class Stack(object):
                     connection_manager=self.connection_manager
                 )
                 self._config.read(
-                    self.environment_config.get("user_variables")
+                    self.environment_config.get("user_variables"),
+                    self.environment_config
                 )
 
         return self._config
@@ -193,11 +194,16 @@ class Stack(object):
             "StackName": self.external_name,
             "Parameters": self._format_parameters(self.parameters),
             "Capabilities": ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+            "NotificationARNs": self.config.get("notifications", []),
             "Tags": [
                 {"Key": str(k), "Value": str(v)}
                 for k, v in self.config.get("stack_tags", {}).items()
             ]
         }
+        if "on_failure" in self.config:
+            create_stack_kwargs.update({
+                "OnFailure": self.config.get("on_failure")
+            })
         create_stack_kwargs.update(self._get_template_details())
         create_stack_kwargs.update(self._get_role_arn())
         response = self.connection_manager.call(
@@ -227,6 +233,7 @@ class Stack(object):
             "StackName": self.external_name,
             "Parameters": self._format_parameters(self.parameters),
             "Capabilities": ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+            "NotificationARNs": self.config.get("notifications", []),
             "Tags": [
                 {"Key": str(k), "Value": str(v)}
                 for k, v in self.config.get("stack_tags", {}).items()
@@ -519,6 +526,7 @@ class Stack(object):
             "Parameters": self._format_parameters(self.parameters),
             "Capabilities": ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
             "ChangeSetName": change_set_name,
+            "NotificationARNs": self.config.get("notifications", []),
             "Tags": [
                 {"Key": str(k), "Value": str(v)}
                 for k, v in self.config.get("stack_tags", {}).items()

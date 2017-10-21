@@ -12,12 +12,14 @@ A stack config file is a yaml object of key-value pairs configuring a particular
 
 - [dependencies](#dependencies) *(optional)*
 - [hooks](#hooks) *(optional)*
+- [on_failure](#on_failure) *(optional)*
 - [parameters](#parameters) *(optional)*
 - [protect](#protect) *(optional)*
 - [sceptre_user_data](#sceptre_user_data) *(optional)*
 - [stack_name](#stack_name) *(optional)*
 - [stack_tags](#stack_tags) *(optional)*
 - [role_arn](#role_arn) *(optional)*
+- [notifications](#notifications) *(optional)*
 - [template_path](#template_path) *(required)*
 
 
@@ -28,6 +30,10 @@ A list of other stacks in the environment that this stack depends on. Note that 
 ### hooks
 
 A list of arbitrary shell or python commands or scripts to run. Find out more in the [Hooks]({{ site.baseurl }}/docs/hooks.html) section.
+
+### on_failure
+
+This parameter describes the action taken by CloudFormation when a stack fails to create. For more information and valid values see the [AWS Documentation](http://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStack.html).
 
 ### parameters
 
@@ -112,6 +118,10 @@ A dictionary of [CloudFormation Tags](https://docs.aws.amazon.com/AWSCloudFormat
 
 The ARN of a [CloudFormation Service Role](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-iam-servicerole.html) that is assumed by CloudFormation to create, update or delete resources.
 
+### notifications
+
+List of SNS topic ARNs to publish stack related events to. A maximum of 5 ARNs can be specified per stack. This configuration will be used by the `create-stack`, `update-stack`, and `create-change-set` commands. More information about stack notifications can found under the relevant section in the [AWS CloudFormation API documentation](http://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateStack.html).
+
 ### template_path
 
 The path to the CloudFormation, Jinja2 or Python template to build the stack from. The path can either be absolute or relative to the Sceptre Directory. Sceptre treats the template as CloudFormation, Jinja2 or Python depending on the template's file extension. Note that the template filename may be different from the stack config filename.
@@ -129,6 +139,19 @@ Stack config can be cascaded in the same way Environment config can be, as descr
 ## Templating
 
 Stack config supports templating in the same way Environment config can be, as described in the section in Environment Config on [Templating]({{ site.baseurl }}/docs/environment_config.html#templating).
+
+Stack config makes environment config available to template.
+
+
+### Environment config
+
+Environment config properties are available via the environment_config variable when using templating.
+
+```yaml
+parameters:
+  Region: {% raw %}{{ environment_config.region }}{% endraw %}
+```
+
 
 Environment Variables
 ---------------------
