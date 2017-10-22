@@ -75,14 +75,21 @@ def add_stack_hooks(func):
         try:
             response = func(self, *args, **kwargs)
         except ClientError as e:
-            execute_hooks(self.hooks.get("after_" + func.__name__), "no_update") 
+            # Only run if there is a valid template but there are no updates
+            # to perform.
+            execute_hooks(self.hooks.get("after_" + func.__name__),
+                          "no_update")
+            message = e.response['Error']['Message']
+            if e.response['Error']['Code'] == 'ValidationError' \
+               and message.endswith("No updates are to be performed."):
+                    execute_hooks(self.hooks.get("after_" + func.__name__),
+                                  "no_update")
             # Interestingly enough, this makes the finally block run and then
             # raise e AFTER the finally.
             raise e
         finally:
             execute_hooks(self.hooks.get("after_" + func.__name__), "always")
         execute_hooks(self.hooks.get("after_" + func.__name__), "success")
-        
 
         return response
 
