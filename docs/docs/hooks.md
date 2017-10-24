@@ -1,4 +1,4 @@
----
+---A
 layout: docs
 ---
 
@@ -26,9 +26,45 @@ Hooks are specified in a stack's config file, using the following syntax:
 
 ```yaml
 hooks:
-    hook_point:
-        - !command_type command 1
-        - !command_type command 2
+    <hook_point>:
+        - !command_type command_1
+        - !command_type command_2
+```
+
+### Run Type
+There is an optional parameter for further enforcing when a hook runs.
+`success` - Run hook only after update, creation, or deletion. This is the default behavior.
+`no_update` - Only run hook when no action is performed by cloudformation (for example, running an update with no template change).
+`always` - Run the hook unless there is a template validation or network error.
+
+Syntax:
+```yaml
+hooks:
+    <hook_point>:
+        - run: <run_type>
+	  command: !command_type command_1
+	- run: <run_type>
+	  command: !command_type command_2
+```
+Note that, using this syntax, it is not possible to associate one run type with several commands in one entry.
+i.e., instead of writing something like this:
+```yaml
+hooks:
+    before_update:
+        - run: always
+	  command:
+	      - !cmd "echo Hello"
+	      - !cmd "echo world!"
+```
+
+one must write:
+```yaml
+hooks:
+    before_update:
+        - run: always
+	  command: !cmd "echo Hello"
+        - run: always
+	  command: !cmd "echo world!"
 ```
 
 
@@ -78,6 +114,9 @@ before_create:
 
 ### asg\_scheduled\_actions
 
+<div class="alert alert-warning">
+The asg_scheduled_actions hook has been deprecated and will be removed in a later version of Sceptre. We recommend using the asg_scaling_processes hook instead.
+</div>
 Pauses or resumes autoscaling scheduled actions.
 
 Syntax:
