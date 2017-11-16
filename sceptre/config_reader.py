@@ -71,7 +71,6 @@ class ConfigReader(object):
 
     def __init__(self, sceptre_dir, variables=None):
         self.logger = logging.getLogger(__name__)
-        self._deferred_constructors = []
 
         self.sceptre_dir = sceptre_dir
 
@@ -409,7 +408,7 @@ class ConfigReader(object):
 
         for abs_path, rel_path in paths.items():
             if not is_leaf and path.isdir(abs_path):
-                environment.environments.append(
+                environment.sub_environments.append(
                     self.construct_environment(rel_path)
                 )
             elif is_leaf and path.isfile(abs_path):
