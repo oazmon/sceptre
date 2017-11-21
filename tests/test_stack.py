@@ -705,6 +705,26 @@ environment_config={'key': 'val'}, connection_manager=connection_manager)"
             kwargs={"Template": sentinel.template}
         )
 
+    @patch("sceptre.stack.Stack.config")
+    @patch("sceptre.stack.Stack._format_parameters")
+    @patch("sceptre.stack.Stack._get_template_details")
+    def test_estimate_template_cost_sends_correct_request(
+        self, mock_get_template_details, mock_format_params, mock_config
+    ):
+        mock_format_params.return_value = sentinel.parameters
+        mock_get_template_details.return_value = {
+            "Template": sentinel.template
+        }
+        self.stack.estimate_template_cost()
+        self.stack.connection_manager.call.assert_called_with(
+            service="cloudformation",
+            command="estimate_template_cost",
+            kwargs={
+                "Parameters": sentinel.parameters,
+                "Template": sentinel.template,
+            }
+        )
+
     @patch("sceptre.stack.Stack._format_parameters")
     @patch("sceptre.stack.Stack._get_template_details")
     def test_create_change_set_sends_correct_request(
