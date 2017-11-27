@@ -180,7 +180,7 @@ class TestTemplate(object):
 
         expected_template_key = (
             "prefix/eu-west-1/environment/path/"
-            "stack-name-2012-01-01-00-00-00-000000Z.template"
+            "stack-name-2012-01-01-00-00-00-000000Z.json"
         )
 
         self.connection_manager.call.assert_called_once_with(
@@ -276,18 +276,6 @@ class TestTemplate(object):
         self.template.path = os.path.join(
             os.getcwd(),
             "tests/fixtures/templates/vpc.yaml"
-        )
-        output = self.template.body
-        output_dict = yaml.load(output)
-        with open("tests/fixtures/templates/compiled_vpc.json", "r") as f:
-            expected_output_dict = json.loads(f.read())
-        assert output_dict == expected_output_dict
-
-    def test_body_with_yml_template(self):
-        self.template.name = "vpc"
-        self.template.path = os.path.join(
-            os.getcwd(),
-            "tests/fixtures/templates/vpc.yml"
         )
         output = self.template.body
         output_dict = yaml.load(output)

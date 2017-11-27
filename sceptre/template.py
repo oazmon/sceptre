@@ -121,9 +121,7 @@ class Template(object):
         else:
             with open(path, 'r') as template_file:
                 existing_body = template_file.read()
-            existing_dict = yaml.safe_load(existing_body)
-            new_dict = yaml.safe_load(body)
-            if cmp(existing_dict, new_dict) != 0:
+            if yaml.safe_load(existing_body) != yaml.safe_load(body):
                 raise ImportFailureError(
                     "Unable to import template. "
                     "File already exists and is different: "
@@ -196,7 +194,7 @@ class Template(object):
         try:
             body = module.sceptre_handler(self.sceptre_user_data)
         except AttributeError as e:
-            if 'sceptre_handler' in e.message:
+            if 'sceptre_handler' in str(e):
                 raise TemplateSceptreHandlerError(
                     "The template does not have the required "
                     "'sceptre_handler(sceptre_user_data)' function."

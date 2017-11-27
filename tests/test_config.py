@@ -272,7 +272,7 @@ class TestConfig(object):
                     'Default': 'match-default-value'
                 }
             }
-        }, encoding='ascii')
+        })
         mock_connection_manager = Mock()
         mock_connection_manager.call.return_value = {'Stacks': [
                 {
